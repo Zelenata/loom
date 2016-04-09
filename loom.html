@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html>
+  <style>
+    *{
+    //    border:solid 1px black;
+    }
+    selection{
+        display:block;
+    }
+    #size-selection{
+        padding : 5px;
+        width:200px;
+        height:220px;
+        float:left;
+    }
+    #yarn-selection{
+        padding : 5px;
+        height:220px;
+        vertical-align: top;
+    }
+
+    #warp-selection{
+        padding:5px;
+        height:auto;
+        margin-left:67px;
+    }
+    #weft-selection{
+        padding:5px;
+        height:auto;
+        width:50px;
+        float:left;
+        margin-top: 0px;
+        margin-bottom: 0px;
+    }
+    rendering{
+        float:none;
+        padding:15px;
+    }
+    #loom-canvas{
+        width:1000px;
+        height:1000px;
+    }
+    warp-selector{
+        padding = 1px;
+        display:inline-block;
+        background:red;
+        height:50px;
+        width:12px;
+        font-size: 60%;
+        text-align: center;
+        vertical-align: middle;
+        margin-left: 1px;
+        border:2px solid #FFFFFF;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+
+    weft-selector{
+        padding = 1px;
+        display:inline-block;
+        background:red;
+        width:50px;
+        font-size: 60%;
+        text-align: center;
+        border:2px solid #FFFFFF;
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
+        -khtml-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+
+    .stop-scrolling {
+          height: 100%;
+          overflow: hidden;
+    }
+
+  </style>
+  <link rel='stylesheet' href='./spectrum.css' />
+  <head>
+    <title>Loom</title>
+
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script type="text/javascript" src="./jqColorPicker.min.js"></script>
+    <script type="text/javascript" src="./bootstrap-colorpicker.min.js"></script>
+    <script type="text/javascript" src="./spectrum.js"></script>
+
+  </head>
+  <body>
+    <selection>
+        <div id="size-selection" >
+             Warp Count : </br>
+             <input type="number" id="warpCountInput" value="24">
+             </br>
+             Weft Count : </br>
+             <input type="number" id="weftCountInput" value="64">
+             </br>
+             Warp Thickness : </br>
+             <input type="number" id="warpThickness" value="8">
+             </br>
+             Weft Thickness : </br>
+             <input type="number" id="weftThickness" value="8">
+             </br>
+             <button type="button" onclick="createSelectors()">Render</button>
+        </div>
+
+        <div id="yarn-selection">
+            <div style="display:inline-block; float:left">
+                <input type='text' id="colorSelector"/>
+            </div>
+            <div style="display:inline-block; float:left">
+
+            </div>
+        </div>
+    </selection>
+
+    <div id="warp-selection">
+    </div>
+
+    <div id="weft-selection">
+    </div>
+
+    <rendering>
+        <canvas id="loom-canvas" width="1000px" height="1000px" style="border:1px solid #000000">
+        </canvas>
+    </rendering>
+
+    <script type="text/javascript">
+        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // Color Selection
+        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        $("#colorSelector").spectrum({
+            flat: true,
+            showButtons: false,
+            showInput: true,
+            showPalette: true,
+            showSelectionPalette: true,
+            clickoutFiresChange: false,
+            palette: [ ],
+            maxSelectionSize: 50,
+            localStorageKey: "spectrum.homepage",
+        });
+
+        $("#colorSelector").on('dragstop.spectrum', selectColor);
+        $("#colorSelector").on('change.spectrum', selectColor);
+
+        function selectColor(e, color){
+            console.log(e);
+            for(var i=0; i < selected.length ; i++) {
+                    setSelectorColor(selected[i],color.toHexString());
+              }
+              redraw();
+        }
+
+        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // Yarn Selectors
+        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        var warpSelectors = new Array();
+        var weftSelectors = new Array();
+        var selected = new Array();
+
+        function createSelectors(){
+            warpSelectors = new Array();
+            weftSelectors = new Array();
+
+            var warpSelection = document.getElementById('warp-selection');
+            var weftSelection = document.getElementById('weft-selection');
+
+            //Hide all current selectors
+            $('warp-selector').each(function(e,v){ v.style.visibility ='hidden' })
+            $('weft-selector').each(function(e,v){ v.style.visibility ='hidden' })
+
+            var newWarpCount = $('#warpCountInput').val();
+            var newWeftCount = $('#weftCountInput').val();
+            var warpSelectorElements = $('warp-selector');
+            var weftSelectorElements = $('weft-selector');
+
+
+            //Create new selectors, as needed
+            for(var i = warpSelectorElements.size(); i < newWarpCount;i++){
+                warpSelector =  createWarpSelector(i+1);
+                $('#warp-selection').append(warpSelector);
+                warpSelector.onmouseover = addToSelected;
+                warpSelector.onmousemove = addToSelected;
+                warpSelector.onclick = addToSelected;
+            }
+
+            for(var i = weftSelectorElements.size(); i < newWeftCount;i++){
+                weftSelector = createWeftSelector(i+1);
+                $('#weft-selection').append(weftSelector);
+                weftSelector.onmouseover = addToSelected;
+                weftSelector.onmousemove = addToSelected;
+                weftSelector.onclick = addToSelected;
+            }
+
+            //Requery for warp selectors
+            warpSelectorElements = $('warp-selector');
+            weftSelectorElements = $('weft-selector');
+
+            //Unhide required number of selectors
+            for(var i = 0; i < newWarpCount;i++){
+                warpSelectorElements[i].style.visibility ='visible';
+                warpSelectors.push(warpSelectorElements[i]);
+            }
+
+            for(var i = 0; i < newWeftCount;i++){
+                weftSelectorElements[i].style.visibility ='visible';
+                weftSelectors.push(weftSelectorElements[i]);
+            }
+
+            var canvasHeight = Math.max(1000,$('#weft-selection').height());
+            canvas.height = canvasHeight;
+            canvas.style.height = canvasHeight + "px";
+
+            redraw();
+        }
+
+        function createWarpSelector(index){
+            var element = document.createElement("warp-selector");
+            element.appendChild(document.createTextNode(index));
+            setSelectorColor(element, "#00AA00");
+            element.stringThickness = Number($('#warpThickness').val());
+            return element;
+        }
+
+        function createWeftSelector(index){
+            var element = document.createElement("weft-selector");
+            element.appendChild(document.createTextNode(index));
+            setSelectorColor(element, "#0000FF");
+            element.stringThickness = Number($('#weftThickness').val());
+            return element;
+        }
+
+        function setSelectorColor(element, color){
+            element.style.backgroundColor = color;
+            if(getLigthness(color) < 75){
+                element.style.color = "#FFFFFF"
+            } else {
+                element.style.color = "#000000"
+            }
+
+            if(getLigthness(color) > 150){
+                element.style.boxShadow = "0 0 0 1px black inset";
+            }
+        }
+
+        function getLigthness(color) {
+            var bigint = parseInt(color.substring(1), 16);
+            var r = (bigint >> 16) & 255;
+            var g = (bigint >> 8) & 255;
+            var b = bigint & 255;
+
+            //http://www.w3.org/TR/AERT#color-contrast
+            return Math.round(((parseInt(r) * 299) + (parseInt(g) * 587) + (parseInt(b) * 114)) /1000);
+        }
+
+        document.onmousedown = mouseDown;
+        document.onmouseup   = mouseUp;
+        var mouseDown = false;
+        function mouseDown(e){
+            mouseDown = true;
+            if(!e.shiftKey && !$("#yarn-selection").is(':hover')){
+                clearSelected();
+            }
+        }
+
+        function mouseUp(e){
+            mouseDown = false;
+        }
+
+        function addToSelected(e){
+            var element = e.target;
+            if(mouseDown || e.type == "click"){
+                element.style.border = "2px solid #000000";
+                selected.push(element);
+            }
+        }
+
+          function clearSelected(){
+                for(var i=0; i < selected.length ; i++) {
+                      selected[i].style.border = "2px solid #FFFFFF";
+              }
+              selected = new Array();
+          }
+
+        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        // Rendering
+        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        var scale = 1;
+
+        var addedWarpSpacing = 1;
+        var addedWeftSpacing = 1;
+
+        var canvas = document.getElementById('loom-canvas');
+        var context = canvas.getContext("2d");
+
+        function redraw(){
+            context.clearRect(0, 0, canvas.width, canvas.height); // Clears the canvas
+            context.setTransform(scale,0,0,scale,0,0);
+            var currentWarpPosition = 0;
+            var currentWeftPosition = 0;
+
+            for(var i=0; i < warpSelectors.length; i++) {
+                var currentWarp = warpSelectors[i];
+                var warpSpacing = currentWarp.stringThickness+addedWarpSpacing;
+                currentWarpPosition += warpSpacing;
+
+                for(var j=0; j < weftSelectors.length; j++) {
+                   var warpTop = (i + j)%2 == 1;
+
+                   var currentWeft = weftSelectors[j];
+                   var weftSpacing = currentWeft.stringThickness+addedWeftSpacing;
+                   currentWeftPosition += weftSpacing;
+
+                   if(!warpTop){
+                       //Draw top vertical line
+
+                       drawLine(currentWarpPosition, currentWeftPosition-weftSpacing/2,
+                               currentWarpPosition, currentWeftPosition+weftSpacing/2,
+                               currentWarp);
+
+                       //Draw weft lines
+                       drawSemiRoundedLine(currentWarpPosition-warpSpacing/2, currentWeftPosition,
+                               currentWarpPosition-(currentWarp.stringThickness-1)/2, currentWeftPosition,
+                               currentWeft);
+
+                       drawSemiRoundedLine(currentWarpPosition+warpSpacing/2, currentWeftPosition,
+                               currentWarpPosition+(currentWarp.stringThickness-1)/2, currentWeftPosition,
+                               currentWeft);
+                   } else {
+                       drawLine(currentWarpPosition-warpSpacing/2, currentWeftPosition,
+                               currentWarpPosition+warpSpacing/2, currentWeftPosition,
+                               currentWeft);
+
+                       drawSemiRoundedLine(
+                               currentWarpPosition, currentWeftPosition-weftSpacing/2,
+                               currentWarpPosition, currentWeftPosition-(currentWeft.stringThickness-1)/2,
+                               currentWarp);
+
+                       drawSemiRoundedLine(
+                               currentWarpPosition, currentWeftPosition+weftSpacing/2,
+                               currentWarpPosition, currentWeftPosition+(currentWeft.stringThickness-1)/2,
+                               currentWarp);
+                    }
+                }
+                currentWeftPosition = 0;
+            }
+        }
+
+        function drawLine(x1,y1,x2,y2, lineDef){
+            context.strokeStyle = lineDef.style.backgroundColor;
+            context.lineWidth = lineDef.stringThickness;
+
+            context.beginPath();
+            context.moveTo(x1, y1);
+            context.lineCap = "square";
+            context.lineTo(x2, y2);
+            context.closePath();
+            context.stroke();
+        }
+
+        function drawSemiRoundedLine(x1,y1,x2,y2, lineDef){
+            drawLine(x1,y1,x2,y2, lineDef)
+        }
+
+        canvas.addEventListener("mousewheel", mouseZoom, true);
+        canvas.addEventListener("DOMMouseScroll", mouseZoom, true);
+        canvas.onmouseover = disableScroll;
+        canvas.onmouseleave = enableScroll;
+
+        function mouseZoom(e){
+            if(e.detail > 0){
+                scale *= 0.9;
+                scale = Math.max(0,scale);
+            } else {
+                scale *= 1.1;
+            }
+            redraw();
+        }
+
+        function disableScroll(){
+            $('body').addClass('stop-scrolling')
+        }
+
+        function enableScroll(){
+            $('body').removeClass('stop-scrolling');
+        }
+    </script>
+  </body>
+</html>
+
+
+
